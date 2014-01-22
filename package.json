@@ -1,0 +1,25 @@
+{
+  "name": "arma3updater",
+  "version": "0.0.1",
+  "description": "Arma 3 auto updater based on dev.arma3.com's blog posts.",
+  "main": "updater.js",
+  "dependencies": {
+    "cheerio": "~0.13.1",
+    "nodemailer": "~0.6.0",
+    "request": "~2.33.0",
+    "iconv": "~2.0.7",
+    "underscore": "~1.5.2"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "arma3",
+    "arma",
+    "auto",
+    "updater"
+  ],
+  "author": "JonBons",
+  "license": "ISC"
+}
