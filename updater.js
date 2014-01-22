@@ -36,9 +36,13 @@ var scrapePage = function(html) {
 		            var changed = JSON.stringify(state) !== JSON.stringify(stateFile);
 
                     if (changed) {
+                		console.log('Server needs updating!');
+
                         handleUpdate(state);
 
-                        //fs.writeFileSync('./state.json', JSON.stringify(state));   
+                        fs.writeFileSync('./state.json', JSON.stringify(state));   
+                    } else {
+                    	console.log('Server is already updated!');
                     }
 		        });
 	        } else {
@@ -57,7 +61,11 @@ var handleUpdate = function(state) {
     fs.writeFileSync('./updatingState.json', JSON.stringify(state));
 
     var options = config.steamcmd;
-    var steamcmd = child_process.spawn(options.path + '\\steamcmd.exe', ['+login', options.auth.user, options.auth.pass, '+force_install_dir', options.gamepath, '+"app_update ' + options.appid + '"', 'validate', '+quit']);
+	var args = ['+login', options.auth.user, options.auth.pass, '+force_install_dir', options.gamepath, '+app_update', options.appid, 'validate', '+quit'];
+	
+    var steamcmd = child_process.spawn(options.path + '\\steamcmd.exe', args);
+	
+	console.log(options.path + '\\steamcmd.exe', args);
 
     steamcmd.stdout.on('data', function (data) {
       console.log('stdout: ' + data);
@@ -143,5 +151,7 @@ fs.exists('./updatingState.json', function(exists) {
     if (!exists) {
         var startUrl = 'http://dev.arma3.com/';
         scrapeUrl(startUrl);
+    } else {
+    	console.log('Server is already updating or is in a funky state!');
     }
 });
