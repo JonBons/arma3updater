@@ -1,8 +1,11 @@
+var async = require('async');
 var request = require('request');
 var cheerio = require('cheerio');
 var child_process = require('child_process');
 var nodemailer = require("nodemailer");
 var fs = require('fs');
+var serviceManager = require('windows-service-manager');
+var gamedig = require('gamedig');
 var _ = require('underscore');
 
 var scrapePage = function(html) {
@@ -54,37 +57,84 @@ var scrapePage = function(html) {
 
 };
 
+var handleInstanceShutdown = function(instance, playercount) {
+
+    if (playercount < 1) {
+
+        serviceManager.stopService(instance.service, 5, true, function(error, services) {
+            if (!error) {
+                console.log('Stopped service ' + instance.service);
+            } else {
+                if (error.code == 1060) {
+                    console.log('Service ' + instance.service + ' does not exist...');
+                }
+            }
+        });
+
+    }
+
+};
+
 var handleUpdate = function(state) {
 
     var $header = $('a', state.header);
 
     fs.writeFileSync('./updatingState.json', JSON.stringify(state));
 
-    var options = config.steamcmd;
-	var args = ['+login', options.auth.user, options.auth.pass, '+force_install_dir', options.gamepath, '+app_update', options.appid, 'validate', '+quit'];
+    async.forEach(config.instances, function(instance, callback) {
+        gamedig.query(
+            {
+                type: 'gamespy3',
+                host: instance.ip,
+                port: instance.port
+            },
+            function(state) {
+                if (state.raw) {
+                    handleInstanceShutdown(instance, Number(state.raw.numplayers));
+                }
+                callback();
+            }
+        );
+    }, function(err) {
+        if (err) return console.log(err);
+        
+        var options = config.steamcmd;
+	    var args = ['+login', options.auth.user, options.auth.pass, '+force_install_dir', options.gamepath, '+app_update', options.appid, 'validate', '+quit'];
 	
-    var steamcmd = child_process.spawn(options.path + '\\steamcmd.exe', args);
-	
-	console.log(options.path + '\\steamcmd.exe', args);
+        var steamcmd = child_process.spawn(options.path + '\\steamcmd.exe', args);
 
-    steamcmd.stdout.on('data', function (data) {
-      console.log('stdout: ' + data);
-    });
+        steamcmd.stdout.on('data', function (data) {
+          console.log('stdout: ' + data);
+        });
 
-    steamcmd.stderr.on('data', function (data) {
-      console.log('stderr: ' + data);
-    });
+        steamcmd.stderr.on('data', function (data) {
+          console.log('stderr: ' + data);
+        });
 
-    steamcmd.on('close', function (code) {
-        console.log('child process exited with code ' + code);
+        steamcmd.on('close', function (code) {
+            console.log('child process exited with code ' + code);
 
-        fs.unlink('./updatingState.json', function (err) {
-            if (err) throw err;
+            if (code == 0) {
+
+                async.forEach(config.instances, function(instance, callback) {
+
+                    serviceManager.startService(instance.service, 10, function(error, services) {
+                        if (!error) {
+                            console.log('Started service ' + instance.service);
+                        }
+                    });
+
+                });
+
+            }
+
+            fs.unlink('./updatingState.json', function (err) {
+                if (err) throw err;
+            });
         });
     });
 
     handleSendNotification($header);
-
 };
 
 var handleSendNotification = function($header) {
@@ -108,7 +158,7 @@ var handleSendNotification = function($header) {
         var emailOptions = _.extend(config.nodemailer.options, options); 
 
         // send mail with defined transport object
-        /*transport.sendMail(emailOptions, function(error, response){
+        transport.sendMail(emailOptions, function(error, response){
             if(error){
                 console.log(error);
             }else{
@@ -116,7 +166,7 @@ var handleSendNotification = function($header) {
             }
 
             transport.close(); // shut down the connection pool, no more messages
-        });*/
+        });
 
 	});
 
