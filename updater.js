@@ -10,7 +10,7 @@ var _ = require('underscore');
 
 var scrapePage = function(html) {
 
-	$ = cheerio.load(html);
+    $ = cheerio.load(html);
 
     var $wrapper = $('#news_wrapper');
     var $articles = $wrapper.find('.news_article').find('.article_content_margin');
@@ -57,17 +57,21 @@ var scrapePage = function(html) {
 
 };
 
-var handleInstanceShutdown = function(instance, playercount) {
+var handleInstanceShutdown = function(instance, playercount, callback) {
 
     if (playercount < 1) {
 
         serviceManager.stopService(instance.service, 5, true, function(error, services) {
             if (!error) {
                 console.log('Stopped service ' + instance.service);
+				callback();
             } else {
                 if (error.code == 1060) {
                     console.log('Service ' + instance.service + ' does not exist...');
-                }
+					callback();
+                } else {
+					console.log('Error stopping service ', error);
+				}
             }
         });
 
@@ -89,10 +93,13 @@ var handleUpdate = function(state) {
                 port: instance.port
             },
             function(state) {
+				if (state.error) {
+					callback();
+				}
+				
                 if (state.raw) {
-                    handleInstanceShutdown(instance, Number(state.raw.numplayers));
+                    handleInstanceShutdown(instance, Number(state.raw.numplayers), callback);
                 }
-                callback();
             }
         );
     }, function(err) {
@@ -102,6 +109,8 @@ var handleUpdate = function(state) {
 	    var args = ['+login', options.auth.user, options.auth.pass, '+force_install_dir', options.gamepath, '+app_update', options.appid, 'validate', '+quit'];
 	
         var steamcmd = child_process.spawn(options.path + '\\steamcmd.exe', args);
+	
+	    console.log(options.path + '\\steamcmd.exe', args);
 
         steamcmd.stdout.on('data', function (data) {
           console.log('stdout: ' + data);
