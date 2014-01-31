@@ -14,11 +14,24 @@
    	},
    	"steamcmd": {
    		"path": "steamcmdPath",
-   		"appid": "107410",
+   		"appid": "233780",
    		"gamepath": "arma3Path",
    		"auth": {
    			"user": "user",
    			"pass": "userpass"
    		}
-   	}
+   	},
+	"instances_dir": "C:\\arma3instances\\",
+	"instances": [
+		{
+			"service": "A3_2302",
+			"ip": "serverIP",
+			"port": "2302"
+		},
+		{
+			"service": "A3_2402",
+			"ip": "serverIP",
+			"port": "2402"
+		}
+	]
 }
