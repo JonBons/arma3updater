@@ -4,13 +4,23 @@ var cheerio = require('cheerio');
 var child_process = require('child_process');
 var nodemailer = require("nodemailer");
 var fs = require('fs');
+var path = require('path');
 var serviceManager = require('windows-service-manager');
 var gamedig = require('gamedig');
 var _ = require('underscore');
 
+var util = require('util');
+var log_file = fs.createWriteStream('debug.log', {flags : 'w'});
+var log_stdout = process.stdout;
+
+console.log = function(d) { //
+  log_file.write(util.format(d) + '\n');
+  log_stdout.write(util.format(d) + '\n');
+};
+
 var scrapePage = function(html) {
 
-    $ = cheerio.load(html);
+	$ = cheerio.load(html);
 
     var $wrapper = $('#news_wrapper');
     var $articles = $wrapper.find('.news_article').find('.article_content_margin');
@@ -110,7 +120,7 @@ var handleUpdate = function(state) {
 	
         var steamcmd = child_process.spawn(options.path + '\\steamcmd.exe', args);
 	
-	    console.log(options.path + '\\steamcmd.exe', args);
+	    //console.log(options.path + '\\steamcmd.exe', args);
 
         steamcmd.stdout.on('data', function (data) {
           console.log('stdout: ' + data);
@@ -123,23 +133,52 @@ var handleUpdate = function(state) {
         steamcmd.on('close', function (code) {
             console.log('child process exited with code ' + code);
 
-            if (code == 0) {
+			setTimeout(function() {
+			
+				if (code == 0) {
 
-                async.forEach(config.instances, function(instance, callback) {
+					async.forEach(config.instances, function(instance, callback) {
 
-                    serviceManager.startService(instance.service, 10, function(error, services) {
-                        if (!error) {
-                            console.log('Started service ' + instance.service);
-                        }
-                    });
+						var dataFolder = options.gamepath + '\\';					
+						fs.readdir(dataFolder, function (err, files) {
+							if (err) throw err;
 
-                });
+							files.map(function (file) {
+								return path.join(dataFolder, file);
+							}).filter(function (file) {
+								return fs.statSync(file).isFile();
+							}).forEach(function (file) {
+								
+								var instanceFile = file.replace('arma3_data', 'am1\\arma3_' + instance.port);
+								
+								var oldFile = fs.createReadStream(file);
+								var newFile = fs.createWriteStream(instanceFile);
+								
+								oldFile.pipe(newFile);
+								
+							});
+							
+							setTimeout(function() {
+							
+								serviceManager.startService(instance.service, 10, function(error, services) {
+									if (!error) {
+										console.log('Started service ' + instance.service);
+									}
+								});
+								
+							}, 2000);
+						});
 
-            }
+					});
 
-            fs.unlink('./updatingState.json', function (err) {
-                if (err) throw err;
-            });
+				}
+
+				fs.unlink('./updatingState.json', function (err) {
+					if (err) throw err;
+				});
+				
+			}, 500);
+	
         });
     });
 
