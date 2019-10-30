@@ -8,7 +8,7 @@
     "cheerio": "~0.13.1",
 	"gamedig": "~0.1.2",
     "nodemailer": "~0.6.0",
-    "request": "~2.33.0",
+    "request": "~2.88.0",
     "underscore": "~1.5.2",
 	"windows-service-manager": "~0.1.1"
   },
